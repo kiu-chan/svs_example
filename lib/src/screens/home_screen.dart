@@ -3,11 +3,15 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:svs/svs.dart';
 
+import '../utils/export_utils.dart';
 import '../widgets/associated_image_card.dart';
+import '../widgets/export_format_dialog.dart';
 import '../widgets/info_row.dart';
 import '../widgets/section_card.dart';
+import 'region_export_screen.dart';
 import 'sample_library_screen.dart';
 import 'viewer_screen.dart';
 
@@ -90,6 +94,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String get _suggestedExportName => _fileName != null ? p.basenameWithoutExtension(_fileName!) : 'slide';
+
+  Future<void> _exportAssociated(SvsAssociatedImage associated) async {
+    final choice = await pickExportFormat(context);
+    if (choice == null) return;
+    try {
+      final bytes = await exportAssociatedImage(associated, format: choice.format, quality: choice.quality);
+      if (!mounted) return;
+      await saveExportedBytes(
+        context,
+        bytes: bytes,
+        suggestedName: '${_suggestedExportName}_${associated.kind.name}',
+        format: choice.format,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await showExportError(context, e);
+    }
+  }
+
+  Future<void> _exportLevel(SvsLevel level) async {
+    final svs = _svs;
+    if (svs == null) return;
+    final choice = await pickExportFormat(context);
+    if (choice == null) return;
+    try {
+      final bytes = await exportSvsLevel(svs, level: level.index, format: choice.format, quality: choice.quality);
+      if (!mounted) return;
+      await saveExportedBytes(
+        context,
+        bytes: bytes,
+        suggestedName: '${_suggestedExportName}_level${level.index}',
+        format: choice.format,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      await showExportError(context, e);
+    }
+  }
+
+  void _openRegionExport(SvsFile svs) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => RegionExportScreen(svs: svs, suggestedName: _suggestedExportName)));
+  }
+
   Future<void> _disposeCurrent() async {
     await _svs?.close();
     _svs = null;
@@ -111,6 +161,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(_fileName ?? 'SVS Viewer'),
         actions: [
+          if (_svs != null)
+            IconButton(
+              onPressed: () => _openRegionExport(_svs!),
+              icon: const Icon(Icons.crop),
+              tooltip: 'Xuất vùng ảnh',
+            ),
           IconButton(
             onPressed: _loading ? null : _browseSamples,
             icon: const Icon(Icons.cloud_download_outlined),
@@ -173,17 +229,31 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'Levels (${svs.levels.length})',
           icon: Icons.layers_outlined,
           trailing: FilledButton.icon(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ViewerScreen(svs: svs))),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => ViewerScreen(svs: svs, suggestedExportName: _suggestedExportName)),
+            ),
             icon: const Icon(Icons.zoom_in),
             label: const Text('Xem chi tiết'),
           ),
           child: Column(
             children: [
               for (final level in svs.levels)
-                InfoRow(
-                  'Level ${level.index}',
-                  '${level.width}×${level.height}  •  downsample ${level.downsample.toStringAsFixed(1)}x  •  '
-                      'tiles ${level.tilesAcrossX}×${level.tilesAcrossY}',
+                Row(
+                  children: [
+                    Expanded(
+                      child: InfoRow(
+                        'Level ${level.index}',
+                        '${level.width}×${level.height}  •  downsample ${level.downsample.toStringAsFixed(1)}x  •  '
+                            'tiles ${level.tilesAcrossX}×${level.tilesAcrossY}',
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _exportLevel(level),
+                      icon: const Icon(Icons.ios_share),
+                      tooltip: 'Xuất cả level này',
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
                 ),
             ],
           ),
@@ -197,7 +267,11 @@ class _HomeScreenState extends State<HomeScreen> {
               for (final associated in svs.associatedImages)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: AssociatedImageCard(associated: associated, preview: _associatedPreviews[associated.kind]),
+                  child: AssociatedImageCard(
+                    associated: associated,
+                    preview: _associatedPreviews[associated.kind],
+                    onExport: associated.isDecodable ? () => _exportAssociated(associated) : null,
+                  ),
                 ),
             ],
           ),

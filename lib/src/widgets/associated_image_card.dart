@@ -8,8 +8,9 @@ import 'package:svs/svs.dart';
 class AssociatedImageCard extends StatelessWidget {
   final SvsAssociatedImage associated;
   final ui.Image? preview;
+  final VoidCallback? onExport;
 
-  const AssociatedImageCard({super.key, required this.associated, required this.preview});
+  const AssociatedImageCard({super.key, required this.associated, required this.preview, this.onExport});
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +59,13 @@ class AssociatedImageCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onExport != null)
+            IconButton(
+              onPressed: onExport,
+              icon: const Icon(Icons.ios_share),
+              tooltip: 'Xuất ảnh',
+              visualDensity: VisualDensity.compact,
+            ),
         ],
       ),
     );
