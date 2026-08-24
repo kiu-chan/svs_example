@@ -120,8 +120,19 @@ class _HomeScreenState extends State<HomeScreen> {
     if (svs == null) return;
     final choice = await pickExportFormat(context);
     if (choice == null) return;
+    if (!mounted) return;
     try {
-      final bytes = await exportSvsLevel(svs, level: level.index, format: choice.format, quality: choice.quality);
+      final bytes = await runWithExportProgress(
+        context,
+        title: 'Exporting level ${level.index}…',
+        task: (onProgress) => exportSvsLevel(
+          svs,
+          level: level.index,
+          format: choice.format,
+          quality: choice.quality,
+          onProgress: onProgress,
+        ),
+      );
       if (!mounted) return;
       await saveExportedBytes(
         context,

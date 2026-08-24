@@ -1,6 +1,7 @@
-import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:svs/svs.dart';
 
@@ -90,6 +91,61 @@ Future<void> saveRawBytes(
   }
   final display = savedUri.scheme == 'file' ? savedUri.toFilePath() : savedUri.toString();
   messenger.showSnackBar(SnackBar(content: Text('Saved: $display')));
+}
+
+/// Runs [task] behind a modal, non-dismissible progress dialog titled
+/// [title] — wired up to the `svs` package's `onProgress: (double) => ...`
+/// export parameter, so [task] should forward the callback it's given
+/// straight through to whichever `export*`/`readSvsRegion` call it wraps.
+/// The dialog closes once [task] completes, whether it throws or not, and
+/// [task]'s result/error is returned/rethrown to the caller.
+Future<T> runWithExportProgress<T>(
+  BuildContext context, {
+  required String title,
+  required Future<T> Function(void Function(double progress) onProgress) task,
+}) async {
+  final progress = ValueNotifier<double>(0);
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _ExportProgressDialog(title: title, progress: progress),
+    ),
+  );
+  try {
+    return await task((value) => progress.value = value);
+  } finally {
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+    progress.dispose();
+  }
+}
+
+class _ExportProgressDialog extends StatelessWidget {
+  final String title;
+  final ValueListenable<double> progress;
+
+  const _ExportProgressDialog({required this.title, required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(title),
+      content: ValueListenableBuilder<double>(
+        valueListenable: progress,
+        builder: (context, value, _) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // A progress of exactly 0 means the export hasn't reported
+            // anything yet (rather than "0% done") — show it indeterminate.
+            LinearProgressIndicator(value: value == 0 ? null : value),
+            const SizedBox(height: 12),
+            Text('${(value * 100).round()}%'),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Shows [error] in a dialog rather than a [SnackBar] — export failures

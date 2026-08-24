@@ -104,19 +104,25 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
 
     final choice = await pickExportFormat(context);
     if (choice == null) return;
+    if (!mounted) return;
 
     setState(() => _exporting = true);
     try {
-      final bytes = await exportSvsRegion(
-        widget.svs,
-        level: _targetLevel,
-        x: region.x,
-        y: region.y,
-        width: region.width,
-        height: region.height,
-        format: choice.format,
-        quality: choice.quality,
-        adjustments: widget.adjustments,
+      final bytes = await runWithExportProgress(
+        context,
+        title: 'Exporting crop…',
+        task: (onProgress) => exportSvsRegion(
+          widget.svs,
+          level: _targetLevel,
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          format: choice.format,
+          quality: choice.quality,
+          adjustments: widget.adjustments,
+          onProgress: onProgress,
+        ),
       );
       if (!mounted) return;
       await saveExportedBytes(
@@ -145,23 +151,30 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
 
     final options = await pickSvsExportOptions(context);
     if (options == null) return;
+    if (!mounted) return;
 
     setState(() => _exporting = true);
     try {
       final tempDir = await getTemporaryDirectory();
+      if (!mounted) return;
       final tempPath =
           '${tempDir.path}/${widget.suggestedName}_crop_${DateTime.now().millisecondsSinceEpoch}.svs';
-      final file = await exportSvsRegionAsSvsToFile(
-        widget.svs,
-        path: tempPath,
-        level: _targetLevel,
-        x: region.x,
-        y: region.y,
-        width: region.width,
-        height: region.height,
-        quality: options.quality,
-        tileSize: options.tileSize,
-        adjustments: widget.adjustments,
+      final file = await runWithExportProgress(
+        context,
+        title: 'Building .svs pyramid…',
+        task: (onProgress) => exportSvsRegionAsSvsToFile(
+          widget.svs,
+          path: tempPath,
+          level: _targetLevel,
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          quality: options.quality,
+          tileSize: options.tileSize,
+          adjustments: widget.adjustments,
+          onProgress: onProgress,
+        ),
       );
       if (!mounted) return;
       await _showNewSvsFileSheet(file);
