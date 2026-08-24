@@ -72,7 +72,7 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Thư viện file mẫu')),
+      appBar: AppBar(title: const Text('Sample file library')),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: kSampleSlides.length,
@@ -151,7 +151,7 @@ class _SampleSlideCard extends StatelessWidget {
             ] else if (error != null) ...[
               Text('$error', style: TextStyle(color: theme.colorScheme.error)),
               const SizedBox(height: 8),
-              FilledButton.icon(onPressed: onDownload, icon: const Icon(Icons.refresh), label: const Text('Thử tải lại')),
+              FilledButton.icon(onPressed: onDownload, icon: const Icon(Icons.refresh), label: const Text('Retry download')),
             ] else if (isDownloaded) ...[
               Row(
                 children: [
@@ -159,15 +159,15 @@ class _SampleSlideCard extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: onOpen,
                       icon: const Icon(Icons.visibility_outlined),
-                      label: const Text('Mở'),
+                      label: const Text('Open'),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(onPressed: onDelete, icon: const Icon(Icons.delete_outline), tooltip: 'Xoá file đã tải'),
+                  IconButton(onPressed: onDelete, icon: const Icon(Icons.delete_outline), tooltip: 'Delete downloaded file'),
                 ],
               ),
             ] else ...[
-              FilledButton.tonalIcon(onPressed: onDownload, icon: const Icon(Icons.download_outlined), label: const Text('Tải về')),
+              FilledButton.tonalIcon(onPressed: onDownload, icon: const Icon(Icons.download_outlined), label: const Text('Download')),
             ],
           ],
         ),

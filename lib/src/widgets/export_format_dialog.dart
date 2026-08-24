@@ -30,7 +30,7 @@ class _ExportFormatDialogState extends State<_ExportFormatDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Xuất ảnh'),
+      title: const Text('Export image'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,7 +53,7 @@ class _ExportFormatDialogState extends State<_ExportFormatDialog> {
           ),
           if (_format == SvsImageFormat.jpeg) ...[
             const SizedBox(height: 4),
-            Text('Chất lượng: ${_quality.round()}', style: Theme.of(context).textTheme.bodySmall),
+            Text('Quality: ${_quality.round()}', style: Theme.of(context).textTheme.bodySmall),
             Slider(
               value: _quality,
               min: 1,
@@ -66,10 +66,10 @@ class _ExportFormatDialogState extends State<_ExportFormatDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Huỷ')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton(
           onPressed: () => Navigator.pop(context, ExportChoice(_format, _quality.round())),
-          child: const Text('Xuất'),
+          child: const Text('Export'),
         ),
       ],
     );

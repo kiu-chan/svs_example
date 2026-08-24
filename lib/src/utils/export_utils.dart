@@ -45,18 +45,18 @@ Future<void> saveExportedBytes(
       fileName: '$suggestedName.${format.extension}',
       bytes: bytes,
       mimeType: format.mimeType,
-      dialogTitle: 'Lưu ảnh đã xuất',
+      dialogTitle: 'Save exported image',
     );
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Lưu thất bại: $e')));
+    messenger.showSnackBar(SnackBar(content: Text('Save failed: $e')));
     return;
   }
   if (savedUri == null) {
-    messenger.showSnackBar(const SnackBar(content: Text('Đã huỷ lưu file')));
+    messenger.showSnackBar(const SnackBar(content: Text('Save cancelled')));
     return;
   }
   final display = savedUri.scheme == 'file' ? savedUri.toFilePath() : savedUri.toString();
-  messenger.showSnackBar(SnackBar(content: Text('Đã lưu: $display')));
+  messenger.showSnackBar(SnackBar(content: Text('Saved: $display')));
 }
 
 /// Shows [error] in a dialog rather than a [SnackBar] — export failures
@@ -66,9 +66,9 @@ Future<void> showExportError(BuildContext context, Object error) {
   return showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Xuất ảnh thất bại'),
+      title: const Text('Export failed'),
       content: Text('$error'),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
     ),
   );
 }

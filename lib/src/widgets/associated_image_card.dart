@@ -51,7 +51,7 @@ class AssociatedImageCard extends StatelessWidget {
                 Text('${associated.width}×${associated.height}', style: theme.textTheme.bodySmall),
                 const SizedBox(height: 2),
                 Text(
-                  associated.isDecodable ? 'JPEG' : 'Nén không hỗ trợ (compression=${associated.compression})',
+                  associated.isDecodable ? 'JPEG' : 'Unsupported compression (compression=${associated.compression})',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: associated.isDecodable ? theme.colorScheme.primary : theme.colorScheme.error,
                   ),
@@ -63,7 +63,7 @@ class AssociatedImageCard extends StatelessWidget {
             IconButton(
               onPressed: onExport,
               icon: const Icon(Icons.ios_share),
-              tooltip: 'Xuất ảnh',
+              tooltip: 'Export image',
               visualDensity: VisualDensity.compact,
             ),
         ],

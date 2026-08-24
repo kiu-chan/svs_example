@@ -45,7 +45,7 @@ class SampleLibraryService {
     try {
       final response = await client.send(http.Request('GET', slide.url));
       if (response.statusCode != 200) {
-        throw HttpException('Tải thất bại (mã ${response.statusCode})', uri: slide.url);
+        throw HttpException('Download failed (status ${response.statusCode})', uri: slide.url);
       }
       final total = response.contentLength ?? slide.approxSizeBytes;
       var received = 0;

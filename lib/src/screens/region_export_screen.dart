@@ -123,13 +123,13 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Xuất vùng ảnh'),
+        title: const Text('Export region'),
         actions: [
           if (_selectionRef != null)
             IconButton(
               onPressed: () => setState(() => _selectionRef = null),
               icon: const Icon(Icons.deselect),
-              tooltip: 'Bỏ chọn',
+              tooltip: 'Clear selection',
             ),
         ],
       ),
@@ -146,7 +146,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     final error = _referenceError;
     if (error != null) {
       return Center(
-        child: Padding(padding: const EdgeInsets.all(24), child: Text('Không thể tải ảnh tham chiếu: $error')),
+        child: Padding(padding: const EdgeInsets.all(24), child: Text('Could not load reference image: $error')),
       );
     }
     final image = _reference;
@@ -237,8 +237,8 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
           children: [
             Text(
               region == null
-                  ? 'Kéo trên ảnh để chọn vùng cần xuất'
-                  : 'Vùng chọn: ${region.width}×${region.height} px (ở level $_targetLevel)',
+                  ? 'Drag on the image to select a region to export'
+                  : 'Selection: ${region.width}×${region.height} px (at level $_targetLevel)',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -247,7 +247,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _targetLevel,
-                    decoration: const InputDecoration(labelText: 'Level xuất', isDense: true),
+                    decoration: const InputDecoration(labelText: 'Export level', isDense: true),
                     items: [
                       for (final level in widget.svs.levels)
                         DropdownMenuItem(
@@ -271,7 +271,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.ios_share),
-                  label: const Text('Xuất'),
+                  label: const Text('Export'),
                 ),
               ],
             ),

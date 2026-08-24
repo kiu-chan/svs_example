@@ -165,17 +165,17 @@ class _HomeScreenState extends State<HomeScreen> {
             IconButton(
               onPressed: () => _openRegionExport(_svs!),
               icon: const Icon(Icons.crop),
-              tooltip: 'Xuất vùng ảnh',
+              tooltip: 'Export region',
             ),
           IconButton(
             onPressed: _loading ? null : _browseSamples,
             icon: const Icon(Icons.cloud_download_outlined),
-            tooltip: 'Thư viện file mẫu',
+            tooltip: 'Sample file library',
           ),
           IconButton(
             onPressed: _loading ? null : _pickAndOpen,
             icon: const Icon(Icons.folder_open),
-            tooltip: 'Chọn file',
+            tooltip: 'Pick file',
           ),
         ],
       ),
@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 12),
               Text('$error', style: TextStyle(color: colorScheme.error), textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              FilledButton.icon(onPressed: _pickAndOpen, icon: const Icon(Icons.refresh), label: const Text('Thử lại')),
+              FilledButton.icon(onPressed: _pickAndOpen, icon: const Icon(Icons.refresh), label: const Text('Retry')),
             ],
           ),
         ),
@@ -233,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => ViewerScreen(svs: svs, suggestedExportName: _suggestedExportName)),
             ),
             icon: const Icon(Icons.zoom_in),
-            label: const Text('Xem chi tiết'),
+            label: const Text('View details'),
           ),
           child: Column(
             children: [
@@ -250,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     IconButton(
                       onPressed: () => _exportLevel(level),
                       icon: const Icon(Icons.ios_share),
-                      tooltip: 'Xuất cả level này',
+                      tooltip: 'Export this whole level',
                       visualDensity: VisualDensity.compact,
                     ),
                   ],
@@ -298,20 +298,20 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.biotech_outlined, size: 72, color: theme.colorScheme.primary),
             const SizedBox(height: 16),
-            Text('Chưa có file nào được mở', style: theme.textTheme.titleMedium),
+            Text('No file open yet', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Chọn một file .svs/.tif trên máy, hoặc tải một file mẫu để thử nghiệm nhanh.',
+              'Pick a .svs/.tif file on your device, or download a sample file for a quick test.',
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(onPressed: onPickFile, icon: const Icon(Icons.folder_open), label: const Text('Chọn file .svs')),
+            FilledButton.icon(onPressed: onPickFile, icon: const Icon(Icons.folder_open), label: const Text('Pick a .svs file')),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: onBrowseSamples,
               icon: const Icon(Icons.cloud_download_outlined),
-              label: const Text('Tải file mẫu để test'),
+              label: const Text('Download a sample file'),
             ),
           ],
         ),

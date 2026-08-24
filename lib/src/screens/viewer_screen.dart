@@ -81,18 +81,18 @@ class _ViewerScreenState extends State<ViewerScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Chú thích: ${_shapeLabel(annotation.type)}', style: Theme.of(sheetContext).textTheme.titleMedium),
+                Text('Annotation: ${_shapeLabel(annotation.type)}', style: Theme.of(sheetContext).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 if (measurement.lengthMicrons != null)
                   Text(
                     annotation.type == SvsAnnotationShapeType.polyline
-                        ? 'Độ dài: ${formatMicrons(measurement.lengthMicrons!)}'
-                        : 'Chu vi: ${formatMicrons(measurement.lengthMicrons!)}',
+                        ? 'Length: ${formatMicrons(measurement.lengthMicrons!)}'
+                        : 'Perimeter: ${formatMicrons(measurement.lengthMicrons!)}',
                   ),
                 if (measurement.areaMicronsSquared != null)
-                  Text('Diện tích: ${formatMicronsSquared(measurement.areaMicronsSquared!)}'),
+                  Text('Area: ${formatMicronsSquared(measurement.areaMicronsSquared!)}'),
                 if (measurement.lengthMicrons == null && measurement.areaMicronsSquared == null)
-                  const Text('Không có dữ liệu đo (điểm, hoặc slide thiếu thông tin microns-per-pixel).'),
+                  const Text('No measurement available (a point, or the slide lacks microns-per-pixel data).'),
                 const SizedBox(height: 16),
                 FilledButton.tonalIcon(
                   onPressed: () {
@@ -100,7 +100,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
                     Navigator.of(sheetContext).pop();
                   },
                   icon: const Icon(Icons.delete_outline),
-                  label: const Text('Xóa chú thích'),
+                  label: const Text('Delete annotation'),
                 ),
               ],
             ),
@@ -113,13 +113,13 @@ class _ViewerScreenState extends State<ViewerScreen> {
   String _shapeLabel(SvsAnnotationShapeType type) {
     switch (type) {
       case SvsAnnotationShapeType.point:
-        return 'Điểm';
+        return 'Point';
       case SvsAnnotationShapeType.rectangle:
-        return 'Hình chữ nhật';
+        return 'Rectangle';
       case SvsAnnotationShapeType.polyline:
-        return 'Đường gấp khúc';
+        return 'Polyline';
       case SvsAnnotationShapeType.polygon:
-        return 'Đa giác';
+        return 'Polygon';
     }
   }
 
@@ -127,11 +127,11 @@ class _ViewerScreenState extends State<ViewerScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Xóa tất cả chú thích?'),
-        content: const Text('Thao tác này không thể hoàn tác.'),
+        title: const Text('Delete all annotations?'),
+        content: const Text('This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Hủy')),
-          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Xóa')),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -150,15 +150,15 @@ class _ViewerScreenState extends State<ViewerScreen> {
         foregroundColor: Colors.white,
         title: Text(
           drawMode == SvsAnnotationDrawMode.none
-              ? 'Kéo để di chuyển, cuộn/chụm để phóng to'
-              : 'Chạm vào ảnh để vẽ chú thích',
+              ? 'Drag to pan, scroll/pinch to zoom'
+              : 'Tap on the image to draw an annotation',
         ),
         actions: [
           if (_annotations.annotations.isNotEmpty)
             IconButton(
               onPressed: _confirmClearAnnotations,
               icon: const Icon(Icons.layers_clear_outlined),
-              tooltip: 'Xóa tất cả chú thích',
+              tooltip: 'Delete all annotations',
             ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
@@ -167,7 +167,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
               ),
             ),
             icon: const Icon(Icons.crop),
-            tooltip: 'Xuất vùng ảnh',
+            tooltip: 'Export region',
           ),
         ],
       ),
@@ -209,36 +209,36 @@ class _AnnotationToolbar extends StatelessWidget {
         children: [
           _ToolButton(
             icon: Icons.pan_tool_alt_outlined,
-            label: 'Di chuyển',
+            label: 'Pan',
             selected: drawMode == SvsAnnotationDrawMode.none,
             onPressed: () => onSelectMode(SvsAnnotationDrawMode.none),
           ),
           _ToolButton(
             icon: Icons.radio_button_checked,
-            label: 'Điểm',
+            label: 'Point',
             selected: drawMode == SvsAnnotationDrawMode.point,
             onPressed: () => onSelectMode(SvsAnnotationDrawMode.point),
           ),
           _ToolButton(
             icon: Icons.crop_square,
-            label: 'Chữ nhật',
+            label: 'Rectangle',
             selected: drawMode == SvsAnnotationDrawMode.rectangle,
             onPressed: () => onSelectMode(SvsAnnotationDrawMode.rectangle),
           ),
           _ToolButton(
             icon: Icons.timeline,
-            label: 'Đường',
+            label: 'Polyline',
             selected: drawMode == SvsAnnotationDrawMode.polyline,
             onPressed: () => onSelectMode(SvsAnnotationDrawMode.polyline),
           ),
           _ToolButton(
             icon: Icons.pentagon_outlined,
-            label: 'Đa giác',
+            label: 'Polygon',
             selected: drawMode == SvsAnnotationDrawMode.polygon,
             onPressed: () => onSelectMode(SvsAnnotationDrawMode.polygon),
           ),
           if (showDone)
-            _ToolButton(icon: Icons.check_circle_outline, label: 'Xong', selected: false, onPressed: onDone),
+            _ToolButton(icon: Icons.check_circle_outline, label: 'Done', selected: false, onPressed: onDone),
         ],
       ),
     );
