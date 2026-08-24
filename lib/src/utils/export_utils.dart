@@ -37,15 +37,48 @@ Future<void> saveExportedBytes(
   required Uint8List bytes,
   required String suggestedName,
   required SvsImageFormat format,
+}) {
+  return saveRawBytes(
+    context,
+    bytes: bytes,
+    fileName: '$suggestedName.${format.extension}',
+    mimeType: format.mimeType,
+    dialogTitle: 'Save exported image',
+  );
+}
+
+/// Same as [saveExportedBytes], but for a newly re-encoded `.svs` pyramid
+/// (from `exportSvsRegionAsSvs`) rather than one of [SvsImageFormat]'s flat
+/// raster formats.
+Future<void> saveSvsFileBytes(
+  BuildContext context, {
+  required Uint8List bytes,
+  required String suggestedName,
+}) {
+  return saveRawBytes(
+    context,
+    bytes: bytes,
+    fileName: '$suggestedName.svs',
+    mimeType: 'application/octet-stream',
+    dialogTitle: 'Save exported slide',
+  );
+}
+
+Future<void> saveRawBytes(
+  BuildContext context, {
+  required Uint8List bytes,
+  required String fileName,
+  required String mimeType,
+  required String dialogTitle,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
   final Uri? savedUri;
   try {
     savedUri = await FilePicker.saveFile(
-      fileName: '$suggestedName.${format.extension}',
+      fileName: fileName,
       bytes: bytes,
-      mimeType: format.mimeType,
-      dialogTitle: 'Save exported image',
+      mimeType: mimeType,
+      dialogTitle: dialogTitle,
     );
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('Save failed: $e')));

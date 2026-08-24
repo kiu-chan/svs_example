@@ -1,21 +1,34 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:svs/svs.dart';
 
 import '../utils/export_utils.dart';
 import '../widgets/export_format_dialog.dart';
+import 'file_info_screen.dart';
+import 'viewer_screen.dart';
 
 /// Lets the user draw a selection rectangle over a low-resolution reference
 /// image (the pyramid's coarsest level, always small enough to decode in
 /// full), pick which pyramid level to export it at, and save the crop —
-/// built on the `svs` package's [readSvsRegion]/[exportSvsRegion].
+/// built on the `svs` package's [readSvsRegion]/[exportSvsRegion]/
+/// [exportSvsRegionAsSvsToFile]. [adjustments] (from the viewer's brightness/
+/// contrast panel, if any) is baked into every exported crop, and previewed
+/// live on the reference image via the same GPU color filter the viewer uses.
 class RegionExportScreen extends StatefulWidget {
   final SvsFile svs;
   final String suggestedName;
+  final SvsImageAdjustments adjustments;
 
-  const RegionExportScreen({super.key, required this.svs, required this.suggestedName});
+  const RegionExportScreen({
+    super.key,
+    required this.svs,
+    required this.suggestedName,
+    this.adjustments = SvsImageAdjustments.none,
+  });
 
   @override
   State<RegionExportScreen> createState() => _RegionExportScreenState();
@@ -103,6 +116,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
         height: region.height,
         format: choice.format,
         quality: choice.quality,
+        adjustments: widget.adjustments,
       );
       if (!mounted) return;
       await saveExportedBytes(
@@ -117,6 +131,127 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
+  }
+
+  /// Re-encodes the selected crop as a brand new, reopenable pyramidal
+  /// `.svs` file (rather than a flat raster image) via
+  /// [exportSvsRegionAsSvsToFile], writing it to a temp file first so it can
+  /// be immediately opened/inspected without a round-trip through the
+  /// platform's save-file picker.
+  Future<void> _exportAsSvs() async {
+    final selection = _selectionRef;
+    if (selection == null) return;
+    final region = _regionForTargetLevel(selection);
+
+    final options = await pickSvsExportOptions(context);
+    if (options == null) return;
+
+    setState(() => _exporting = true);
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final tempPath =
+          '${tempDir.path}/${widget.suggestedName}_crop_${DateTime.now().millisecondsSinceEpoch}.svs';
+      final file = await exportSvsRegionAsSvsToFile(
+        widget.svs,
+        path: tempPath,
+        level: _targetLevel,
+        x: region.x,
+        y: region.y,
+        width: region.width,
+        height: region.height,
+        quality: options.quality,
+        tileSize: options.tileSize,
+        adjustments: widget.adjustments,
+      );
+      if (!mounted) return;
+      await _showNewSvsFileSheet(file);
+    } catch (e) {
+      if (!mounted) return;
+      await showExportError(context, e);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _showNewSvsFileSheet(File file) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('New .svs file created', style: Theme.of(sheetContext).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  file.path,
+                  style: Theme.of(sheetContext).textTheme.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    _openExportedFile(file, viewer: true);
+                  },
+                  icon: const Icon(Icons.zoom_in),
+                  label: const Text('Open in viewer'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    _openExportedFile(file, viewer: false);
+                  },
+                  icon: const Icon(Icons.description_outlined),
+                  label: const Text('View file info'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.of(sheetContext).pop();
+                    final bytes = await file.readAsBytes();
+                    if (!mounted) return;
+                    await saveSvsFileBytes(context, bytes: bytes, suggestedName: '${widget.suggestedName}_crop');
+                  },
+                  icon: const Icon(Icons.save_alt_outlined),
+                  label: const Text('Save a copy'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Opens the freshly exported [file] as its own [SvsFile] (independent of
+  /// [widget.svs]) and pushes either [ViewerScreen] or [FileInfoScreen] on
+  /// it, closing it again once that screen is popped.
+  Future<void> _openExportedFile(File file, {required bool viewer}) async {
+    final SvsFile opened;
+    try {
+      opened = await SvsFile.open(file.path);
+    } catch (e) {
+      if (!mounted) return;
+      await showExportError(context, e);
+      return;
+    }
+    if (!mounted) {
+      await opened.close();
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => viewer
+            ? ViewerScreen(svs: opened, suggestedExportName: '${widget.suggestedName}_crop')
+            : FileInfoScreen(svs: opened, title: '${widget.suggestedName}_crop.svs'),
+      ),
+    );
+    await opened.close();
   }
 
   @override
@@ -140,6 +275,15 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
         ],
       ),
     );
+  }
+
+  /// Wraps [child] in the same GPU `ColorFilter` [SvsImageView] applies live,
+  /// so this screen's reference preview matches what the exported crop will
+  /// actually look like.
+  Widget _applyAdjustments(Widget child) {
+    final filter = widget.adjustments.toColorFilter();
+    if (filter == null) return child;
+    return ColorFiltered(colorFilter: filter, child: child);
   }
 
   Widget _buildReferenceArea() {
@@ -183,7 +327,9 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  RawImage(image: image, width: displayWidth, height: displayHeight, fit: BoxFit.fill),
+                  _applyAdjustments(
+                    RawImage(image: image, width: displayWidth, height: displayHeight, fit: BoxFit.fill),
+                  ),
                   if (_selectionRef != null)
                     Positioned.fromRect(
                       rect: toDisplayRect(_selectionRef!),
@@ -274,6 +420,12 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                   label: const Text('Export'),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: selection == null || _exporting ? null : _exportAsSvs,
+              icon: const Icon(Icons.biotech_outlined),
+              label: const Text('Export as new .svs slide'),
             ),
           ],
         ),

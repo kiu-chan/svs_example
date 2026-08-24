@@ -10,6 +10,77 @@ class ExportChoice {
   const ExportChoice(this.format, this.quality);
 }
 
+class SvsExportOptions {
+  final int quality;
+  final int tileSize;
+
+  const SvsExportOptions({required this.quality, required this.tileSize});
+}
+
+/// Prompts for the JPEG quality and tile size used to re-encode a cropped
+/// region as a brand new pyramidal `.svs` file (`exportSvsRegionAsSvs`).
+/// Returns null if the user cancels.
+Future<SvsExportOptions?> pickSvsExportOptions(BuildContext context) {
+  return showDialog<SvsExportOptions>(context: context, builder: (context) => const _SvsExportOptionsDialog());
+}
+
+class _SvsExportOptionsDialog extends StatefulWidget {
+  const _SvsExportOptionsDialog();
+
+  @override
+  State<_SvsExportOptionsDialog> createState() => _SvsExportOptionsDialogState();
+}
+
+class _SvsExportOptionsDialogState extends State<_SvsExportOptionsDialog> {
+  double _quality = 90;
+  int _tileSize = 256;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Export as .svs'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Re-encodes the crop as a brand new, reopenable pyramidal .svs file.'),
+          const SizedBox(height: 16),
+          Text('Tile JPEG quality: ${_quality.round()}', style: Theme.of(context).textTheme.bodySmall),
+          Slider(
+            value: _quality,
+            min: 1,
+            max: 100,
+            divisions: 99,
+            label: '${_quality.round()}',
+            onChanged: (value) => setState(() => _quality = value),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            initialValue: _tileSize,
+            decoration: const InputDecoration(labelText: 'Tile size', isDense: true),
+            items: const [
+              DropdownMenuItem(value: 128, child: Text('128 × 128')),
+              DropdownMenuItem(value: 256, child: Text('256 × 256 (Aperio default)')),
+              DropdownMenuItem(value: 512, child: Text('512 × 512')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _tileSize = value);
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, SvsExportOptions(quality: _quality.round(), tileSize: _tileSize)),
+          child: const Text('Export'),
+        ),
+      ],
+    );
+  }
+}
+
 /// Prompts for an [SvsImageFormat] (and, for JPEG, a quality level) before
 /// an export. Returns null if the user cancels.
 Future<ExportChoice?> pickExportFormat(BuildContext context) {

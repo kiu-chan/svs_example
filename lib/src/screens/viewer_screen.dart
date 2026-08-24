@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:svs/svs.dart';
 
+import 'file_info_screen.dart';
 import 'region_export_screen.dart';
 
 /// Full-screen pannable/zoomable view of an already-opened [SvsFile], with
@@ -21,6 +22,7 @@ class ViewerScreen extends StatefulWidget {
 class _ViewerScreenState extends State<ViewerScreen> {
   late final SvsAnnotationController _annotations = SvsAnnotationController(drawColor: Colors.amberAccent);
   DiskTileCache? _diskCache;
+  SvsImageAdjustments _adjustments = SvsImageAdjustments.none;
 
   @override
   void initState() {
@@ -53,6 +55,26 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _annotations.removeListener(_onAnnotationsChanged);
     _annotations.dispose();
     super.dispose();
+  }
+
+  void _openAdjustments() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      builder: (sheetContext) {
+        return _AdjustmentsSheet(
+          initial: _adjustments,
+          onChanged: (value) => setState(() => _adjustments = value),
+        );
+      },
+    );
+  }
+
+  void _openFileInfo() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FileInfoScreen(svs: widget.svs, title: widget.suggestedExportName)),
+    );
   }
 
   void _toggleMode(SvsAnnotationDrawMode mode) {
@@ -161,9 +183,26 @@ class _ViewerScreenState extends State<ViewerScreen> {
               tooltip: 'Delete all annotations',
             ),
           IconButton(
+            onPressed: _openFileInfo,
+            icon: const Icon(Icons.description_outlined),
+            tooltip: 'View all file info (TIFF tags)',
+          ),
+          IconButton(
+            onPressed: _openAdjustments,
+            icon: Icon(
+              Icons.tune,
+              color: _adjustments.isIdentity ? Colors.white : Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Brightness / contrast',
+          ),
+          IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => RegionExportScreen(svs: widget.svs, suggestedName: widget.suggestedExportName),
+                builder: (_) => RegionExportScreen(
+                  svs: widget.svs,
+                  suggestedName: widget.suggestedExportName,
+                  adjustments: _adjustments,
+                ),
               ),
             ),
             icon: const Icon(Icons.crop),
@@ -176,6 +215,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         diskCache: _diskCache,
         annotationController: _annotations,
         onAnnotationTap: _onAnnotationTap,
+        adjustments: _adjustments,
       ),
       bottomNavigationBar: _AnnotationToolbar(
         drawMode: drawMode,
@@ -267,6 +307,92 @@ class _ToolButton extends StatelessWidget {
             Icon(icon, color: color),
             const SizedBox(height: 2),
             Text(label, style: TextStyle(color: color, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Live brightness/contrast/shadows/highlights controls for the
+/// `SvsImageAdjustments` GPU-accelerated color filter applied to the slide
+/// under it — every slider move is reported immediately via [onChanged], so
+/// the viewer behind the sheet updates live.
+class _AdjustmentsSheet extends StatefulWidget {
+  final SvsImageAdjustments initial;
+  final ValueChanged<SvsImageAdjustments> onChanged;
+
+  const _AdjustmentsSheet({required this.initial, required this.onChanged});
+
+  @override
+  State<_AdjustmentsSheet> createState() => _AdjustmentsSheetState();
+}
+
+class _AdjustmentsSheetState extends State<_AdjustmentsSheet> {
+  late double _brightness = widget.initial.brightness;
+  late double _contrast = widget.initial.contrast;
+  late double _shadows = widget.initial.shadows;
+  late double _highlights = widget.initial.highlights;
+
+  void _apply() {
+    widget.onChanged(
+      SvsImageAdjustments(
+        brightness: _brightness,
+        contrast: _contrast,
+        shadows: _shadows,
+        highlights: _highlights,
+      ),
+    );
+  }
+
+  void _reset() {
+    setState(() {
+      _brightness = 0;
+      _contrast = 0;
+      _shadows = 0;
+      _highlights = 0;
+    });
+    _apply();
+  }
+
+  Widget _slider(String label, double value, ValueChanged<double> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$label: ${value.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Slider(
+          value: value,
+          min: -1,
+          max: 1,
+          onChanged: (v) {
+            setState(() => onChanged(v));
+            _apply();
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('Adjustments', style: TextStyle(color: Colors.white, fontSize: 16)),
+                const Spacer(),
+                TextButton(onPressed: _reset, child: const Text('Reset')),
+              ],
+            ),
+            _slider('Brightness', _brightness, (v) => _brightness = v),
+            _slider('Contrast', _contrast, (v) => _contrast = v),
+            _slider('Shadows', _shadows, (v) => _shadows = v),
+            _slider('Highlights', _highlights, (v) => _highlights = v),
           ],
         ),
       ),

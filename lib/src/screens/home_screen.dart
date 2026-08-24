@@ -11,6 +11,7 @@ import '../widgets/associated_image_card.dart';
 import '../widgets/export_format_dialog.dart';
 import '../widgets/info_row.dart';
 import '../widgets/section_card.dart';
+import 'file_info_screen.dart';
 import 'region_export_screen.dart';
 import 'sample_library_screen.dart';
 import 'viewer_screen.dart';
@@ -161,6 +162,16 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(_fileName ?? 'SVS Viewer'),
         actions: [
+          if (_svs != null)
+            IconButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FileInfoScreen(svs: _svs!, title: _fileName ?? 'slide'),
+                ),
+              ),
+              icon: const Icon(Icons.description_outlined),
+              tooltip: 'View all file info (TIFF tags)',
+            ),
           if (_svs != null)
             IconButton(
               onPressed: () => _openRegionExport(_svs!),
