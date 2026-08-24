@@ -103,10 +103,11 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
       appBar: AppBar(title: const Text('Sample file library')),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: kSampleSlides.length,
+        itemCount: kSampleSlides.length + 1,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
-          final slide = kSampleSlides[index];
+          if (index == 0) return const _SourceBanner();
+          final slide = kSampleSlides[index - 1];
           return _SampleSlideCard(
             slide: slide,
             isDownloaded: _downloaded[slide.fileName] ?? false,
@@ -118,6 +119,39 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
             onDelete: () => _delete(slide),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Explains where every file in this list actually comes from — the
+/// OpenSlide project's own public test-data mirror, not this app's servers.
+class _SourceBanner extends StatelessWidget {
+  const _SourceBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 20, color: theme.colorScheme.onSecondaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Downloaded directly from the OpenSlide project\'s public test-data mirror at '
+              '$kSampleDataSourceUrl — not hosted by this app. Each file below credits its own '
+              'source and license.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -160,21 +194,18 @@ class _SampleSlideCard extends StatelessWidget {
                 Expanded(
                   child: Text(slide.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    slide.sizeLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
-                  ),
-                ),
+                _Chip(label: slide.format, theme: theme),
+                const SizedBox(width: 6),
+                _Chip(label: slide.sizeLabel, theme: theme, emphasized: true),
               ],
             ),
             const SizedBox(height: 6),
             Text(slide.description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text(
+              'Source: ${slide.url.host} · ${slide.credit} · ${slide.license}',
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline),
+            ),
             const SizedBox(height: 12),
             if (downloading) ...[
               LinearProgressIndicator(value: progress.fraction),
@@ -218,6 +249,31 @@ class _SampleSlideCard extends StatelessWidget {
               FilledButton.tonalIcon(onPressed: onDownload, icon: const Icon(Icons.download_outlined), label: const Text('Download')),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final ThemeData theme;
+  final bool emphasized;
+
+  const _Chip({required this.label, required this.theme, this.emphasized = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: emphasized ? theme.colorScheme.secondaryContainer : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: emphasized ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );
