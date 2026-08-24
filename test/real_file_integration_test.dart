@@ -3,11 +3,9 @@
 // see ../sample_data/ — so every test here skips gracefully when the file
 // isn't present locally rather than failing.
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:svs/src/render/ycbcr_fix.dart';
 import 'package:svs/src/svs/aperio_tags.dart';
 import 'package:svs/svs.dart';
 
@@ -127,19 +125,24 @@ void main() {
       return (r: bytes!.getUint8(i), g: bytes.getUint8(i + 1), b: bytes.getUint8(i + 2));
     }
 
-    // Ground truth from Pillow (decode strips as `dart:ui` does, then apply
-    // the same inverse RGB->YCbCr fix) — background points plus a couple
-    // inside the tissue (which should read as pink/purple H&E staining, not
-    // the raw decoder's magenta/green), including points straddling a strip
-    // boundary (RowsPerStrip=16 for this IFD).
-    expect(at(0, 0), (r: 176, g: 172, b: 184));
-    expect(at(1023, 0), (r: 178, g: 172, b: 183));
-    expect(at(0, 731), (r: 176, g: 172, b: 184));
-    expect(at(1023, 731), (r: 176, g: 172, b: 184));
-    expect(at(50, 15), (r: 176, g: 172, b: 184));
-    expect(at(50, 16), (r: 176, g: 172, b: 184));
-    expect(at(200, 31), (r: 178, g: 172, b: 183));
-    expect(at(200, 32), (r: 176, g: 173, b: 185));
+    // Background points plus a couple inside the tissue (pink/purple H&E
+    // staining), including points straddling a strip boundary
+    // (RowsPerStrip=16 for this IFD). The tissue points match values
+    // recorded pre-1.0.2 (never in the clipped range, so the old post-decode
+    // inversion already got them right); the near-white background points
+    // don't — the old fix inverted a transform that had already clipped
+    // those channels at 0/255, so its "ground truth" was itself wrong there.
+    // Fixed at the source (transform disabled before decode) these decode
+    // losslessly to near-white, not the lavender-gray the clipped inversion
+    // produced.
+    expect(at(0, 0), (r: 243, g: 243, b: 243));
+    expect(at(1023, 0), (r: 246, g: 244, b: 244));
+    expect(at(0, 731), (r: 244, g: 244, b: 244));
+    expect(at(1023, 731), (r: 241, g: 241, b: 241));
+    expect(at(50, 15), (r: 244, g: 244, b: 244));
+    expect(at(50, 16), (r: 244, g: 244, b: 244));
+    expect(at(200, 31), (r: 246, g: 244, b: 244));
+    expect(at(200, 32), (r: 247, g: 249, b: 247));
     expect(at(150, 550), (r: 182, g: 136, b: 166));
     expect(at(700, 150), (r: 184, g: 141, b: 165));
     expect(at(900, 150), (r: 168, g: 129, b: 167));
@@ -153,11 +156,15 @@ void main() {
     expect(level.isJpeg, isTrue);
     // Same TIFF-level signal as the thumbnail/macro associated images
     // (PhotometricInterpretation=RGB) — Aperio writes the main pyramid's
-    // JPEG tiles the same way, so `dart:ui`'s decoder needs the same
-    // post-decode correction here too.
+    // JPEG tiles the same way, so the decoder needs the same fix applied
+    // here too.
     expect(level.photometricInterpretation, ApPhotometric.rgb);
     expect(level.needsYCbCrFix, isTrue);
 
+    // readTileJpegBytes already applies forceRgbColorTransform (an Adobe
+    // transform=0 marker inserted before decode) when needsYCbCrFix, so the
+    // bytes it returns decode straight to the true colors — no separate
+    // post-decode correction step needed by the caller.
     final jpegBytes = await svs.readTileJpegBytes(level.index, 0, 0);
     final codec = await ui.instantiateImageCodec(jpegBytes);
     final frame = await codec.getNextFrame();
@@ -165,19 +172,12 @@ void main() {
     final data = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
     final raw = data!.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 
-    // Before the fix: white background decoded as bright magenta.
-    expect(raw[0], 255);
-    expect(raw[1], closeTo(120, 2));
-    expect(raw[2], 255);
-
-    final fixed = Uint8List.fromList(raw);
-    undoSpuriousYCbCr(fixed);
-    // After the fix: the same light-gray background as the thumbnail's
-    // corners (see the test above) — this tile and the thumbnail depict
-    // overlapping background, so they should land on the same true color.
-    expect(fixed[0], closeTo(176, 2));
-    expect(fixed[1], closeTo(172, 2));
-    expect(fixed[2], closeTo(184, 2));
+    // The same near-white background as the thumbnail's corners (see the
+    // test above) — this tile and the thumbnail depict overlapping
+    // background, so they should land on the same true color.
+    expect(raw[0], closeTo(238, 2));
+    expect(raw[1], closeTo(239, 2));
+    expect(raw[2], closeTo(238, 2));
   }, skip: _skipReasonUnless(jpegSlide));
 
   test('opens a real JPEG2000-compressed slide and decodes a tile via openjpeg_ffi', () async {

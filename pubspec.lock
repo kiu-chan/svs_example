@@ -497,10 +497,10 @@ packages:
     dependency: "direct main"
     description:
       name: svs
-      sha256: d751c92fbe17c8113e0ff3eb61b70361fb1b95c3163273eea717ad389c414ad4
+      sha256: "2b63268fd0def2dea3236c0925baecefbfaac2bc97eeac5c1ff6d08077caa9d1"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "1.0.3"
   term_glyph:
     dependency: transitive
     description:

@@ -216,6 +216,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         annotationController: _annotations,
         onAnnotationTap: _onAnnotationTap,
         adjustments: _adjustments,
+        backgroundColor: Colors.black,
       ),
       bottomNavigationBar: _AnnotationToolbar(
         drawMode: drawMode,

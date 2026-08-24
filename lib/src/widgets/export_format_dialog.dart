@@ -13,8 +13,15 @@ class ExportChoice {
 class SvsExportOptions {
   final int quality;
   final int tileSize;
+  final bool includeLabelAndMacroImages;
+  final bool includeSourceMetadata;
 
-  const SvsExportOptions({required this.quality, required this.tileSize});
+  const SvsExportOptions({
+    required this.quality,
+    required this.tileSize,
+    required this.includeLabelAndMacroImages,
+    required this.includeSourceMetadata,
+  });
 }
 
 /// Prompts for the JPEG quality and tile size used to re-encode a cropped
@@ -34,6 +41,8 @@ class _SvsExportOptionsDialog extends StatefulWidget {
 class _SvsExportOptionsDialogState extends State<_SvsExportOptionsDialog> {
   double _quality = 90;
   int _tileSize = 256;
+  bool _includeLabelAndMacroImages = true;
+  bool _includeSourceMetadata = true;
 
   @override
   Widget build(BuildContext context) {
@@ -68,12 +77,37 @@ class _SvsExportOptionsDialogState extends State<_SvsExportOptionsDialog> {
               setState(() => _tileSize = value);
             },
           ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text('Include label/macro images'),
+            subtitle: const Text("Copies the source slide's label and macro images as-is"),
+            value: _includeLabelAndMacroImages,
+            onChanged: (value) => setState(() => _includeLabelAndMacroImages = value),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text('Include source metadata'),
+            subtitle: const Text('Carries over scanner/file details (excluding original position)'),
+            value: _includeSourceMetadata,
+            onChanged: (value) => setState(() => _includeSourceMetadata = value),
+          ),
         ],
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton(
-          onPressed: () => Navigator.pop(context, SvsExportOptions(quality: _quality.round(), tileSize: _tileSize)),
+          onPressed: () => Navigator.pop(
+            context,
+            SvsExportOptions(
+              quality: _quality.round(),
+              tileSize: _tileSize,
+              includeLabelAndMacroImages: _includeLabelAndMacroImages,
+              includeSourceMetadata: _includeSourceMetadata,
+            ),
+          ),
           child: const Text('Export'),
         ),
       ],
