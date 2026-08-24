@@ -496,9 +496,10 @@ packages:
   svs:
     dependency: "direct main"
     description:
-      path: "../svs"
-      relative: true
-    source: path
+      name: svs
+      sha256: e4f333d913e66264e771e0adb0202f57546554dbdb521d565dac6a9ef8fa4d0a
+      url: "https://pub.dev"
+    source: hosted
     version: "1.1.0"
   term_glyph:
     dependency: transitive

@@ -162,23 +162,43 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
       final file = await runWithExportProgress(
         context,
         title: 'Building .svs pyramid…',
-        task: (onProgress) => exportSvsRegionAsSvsToFile(
-          widget.svs,
-          path: tempPath,
-          level: _targetLevel,
-          x: region.x,
-          y: region.y,
-          width: region.width,
-          height: region.height,
-          quality: options.quality,
-          tileSize: options.tileSize,
-          includeLabelAndMacroImages: options.includeLabelAndMacroImages,
-          includeSourceMetadata: options.includeSourceMetadata,
-          compression: options.compression,
-          jp2kCompressionRatio: options.jp2kCompressionRatio,
-          adjustments: widget.adjustments,
-          onProgress: onProgress,
-        ),
+        task: (onProgress) => options.preserveSourceLevels
+            ? exportSvsRegionAsSvsPreservingLevelsToFile(
+                widget.svs,
+                path: tempPath,
+                level: _targetLevel,
+                x: region.x,
+                y: region.y,
+                width: region.width,
+                height: region.height,
+                quality: options.quality,
+                tileSize: options.tileSize,
+                includeLabelAndMacroImages: options.includeLabelAndMacroImages,
+                includeSourceMetadata: options.includeSourceMetadata,
+                compression: options.compression,
+                jp2kCompressionRatio: options.jp2kCompressionRatio,
+                matchSourceCompression: options.matchSourceCompression,
+                adjustments: widget.adjustments,
+                onProgress: onProgress,
+              )
+            : exportSvsRegionAsSvsToFile(
+                widget.svs,
+                path: tempPath,
+                level: _targetLevel,
+                x: region.x,
+                y: region.y,
+                width: region.width,
+                height: region.height,
+                quality: options.quality,
+                tileSize: options.tileSize,
+                includeLabelAndMacroImages: options.includeLabelAndMacroImages,
+                includeSourceMetadata: options.includeSourceMetadata,
+                compression: options.compression,
+                jp2kCompressionRatio: options.jp2kCompressionRatio,
+                matchSourceCompression: options.matchSourceCompression,
+                adjustments: widget.adjustments,
+                onProgress: onProgress,
+              ),
       );
       if (!mounted) return;
       await _showNewSvsFileSheet(file);
@@ -201,7 +221,10 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('New .svs file created', style: Theme.of(sheetContext).textTheme.titleMedium),
+                Text(
+                  'New .svs file created',
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   file.path,
@@ -232,7 +255,11 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                     Navigator.of(sheetContext).pop();
                     final bytes = await file.readAsBytes();
                     if (!mounted) return;
-                    await saveSvsFileBytes(context, bytes: bytes, suggestedName: '${widget.suggestedName}_crop');
+                    await saveSvsFileBytes(
+                      context,
+                      bytes: bytes,
+                      suggestedName: '${widget.suggestedName}_crop',
+                    );
                   },
                   icon: const Icon(Icons.save_alt_outlined),
                   label: const Text('Save a copy'),
@@ -264,8 +291,14 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => viewer
-            ? ViewerScreen(svs: opened, suggestedExportName: '${widget.suggestedName}_crop')
-            : FileInfoScreen(svs: opened, title: '${widget.suggestedName}_crop.svs'),
+            ? ViewerScreen(
+                svs: opened,
+                suggestedExportName: '${widget.suggestedName}_crop',
+              )
+            : FileInfoScreen(
+                svs: opened,
+                title: '${widget.suggestedName}_crop.svs',
+              ),
       ),
     );
     await opened.close();
@@ -307,7 +340,10 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     final error = _referenceError;
     if (error != null) {
       return Center(
-        child: Padding(padding: const EdgeInsets.all(24), child: Text('Could not load reference image: $error')),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('Could not load reference image: $error'),
+        ),
       );
     }
     final image = _reference;
@@ -335,7 +371,12 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
 
           Offset toRefPoint(Offset display) => display * refPerDisplayPixel;
 
-          final refBounds = Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
+          final refBounds = Rect.fromLTWH(
+            0,
+            0,
+            image.width.toDouble(),
+            image.height.toDouble(),
+          );
 
           return Center(
             child: SizedBox(
@@ -345,14 +386,22 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                 fit: StackFit.expand,
                 children: [
                   _applyAdjustments(
-                    RawImage(image: image, width: displayWidth, height: displayHeight, fit: BoxFit.fill),
+                    RawImage(
+                      image: image,
+                      width: displayWidth,
+                      height: displayHeight,
+                      fit: BoxFit.fill,
+                    ),
                   ),
                   if (_selectionRef != null)
                     Positioned.fromRect(
                       rect: toDisplayRect(_selectionRef!),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.amberAccent, width: 2),
+                          border: Border.all(
+                            color: Colors.amberAccent,
+                            width: 2,
+                          ),
                           color: Colors.amberAccent.withValues(alpha: 0.18),
                         ),
                       ),
@@ -372,7 +421,10 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                         if (start == null) return;
                         final current = toRefPoint(details.localPosition);
                         setState(() {
-                          _selectionRef = Rect.fromPoints(start, current).intersect(refBounds);
+                          _selectionRef = Rect.fromPoints(
+                            start,
+                            current,
+                          ).intersect(refBounds);
                         });
                       },
                     ),
@@ -410,12 +462,17 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                 Expanded(
                   child: DropdownButtonFormField<int>(
                     initialValue: _targetLevel,
-                    decoration: const InputDecoration(labelText: 'Export level', isDense: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Export level',
+                      isDense: true,
+                    ),
                     items: [
                       for (final level in widget.svs.levels)
                         DropdownMenuItem(
                           value: level.index,
-                          child: Text('Level ${level.index} — ${level.width}×${level.height}'),
+                          child: Text(
+                            'Level ${level.index} — ${level.width}×${level.height}',
+                          ),
                         ),
                     ],
                     onChanged: (value) {
@@ -431,7 +488,10 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.ios_share),
                   label: const Text('Export'),

@@ -35,8 +35,7 @@ dependencies:
   http: ^1.6.0
   path: ^1.9.1
   path_provider: ^2.1.6
-  svs:
-    path: ../svs
+  svs: ^1.1.0
 
 dev_dependencies:
   flutter_test:
