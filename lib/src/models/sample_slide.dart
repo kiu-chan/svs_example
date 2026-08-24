@@ -17,11 +17,15 @@ class SampleSlide {
     required this.approxSizeBytes,
   });
 
-  String get sizeLabel {
-    final mb = approxSizeBytes / (1024 * 1024);
-    if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
-    return '${(mb / 1024).toStringAsFixed(2)} GB';
-  }
+  String get sizeLabel => formatBytes(approxSizeBytes);
+}
+
+/// Formats a byte count as a short human-readable string, switching from MB
+/// to GB at 1024 MB.
+String formatBytes(int bytes) {
+  final mb = bytes / (1024 * 1024);
+  if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+  return '${(mb / 1024).toStringAsFixed(2)} GB';
 }
 
 const _baseUrl = 'https://openslide.cs.cmu.edu/download/openslide-testdata/Aperio';
@@ -39,7 +43,7 @@ final List<SampleSlide> kSampleSlides = [
     title: 'JP2K-33003-1',
     description: 'JPEG 2000 compression, medium size.',
     url: Uri.parse('$_baseUrl/JP2K-33003-1.svs'),
-    approxSizeBytes: 63847792,
+    approxSizeBytes: 63847265,
   ),
   SampleSlide(
     fileName: 'CMU-1-JP2K-33005.svs',
@@ -60,20 +64,20 @@ final List<SampleSlide> kSampleSlides = [
     title: 'CMU-3',
     description: 'Another sample slide, large size.',
     url: Uri.parse('$_baseUrl/CMU-3.svs'),
-    approxSizeBytes: 253818306,
+    approxSizeBytes: 253815723,
   ),
   SampleSlide(
     fileName: 'JP2K-33003-2.svs',
     title: 'JP2K-33003-2',
     description: 'JPEG 2000 compression, large size.',
     url: Uri.parse('$_baseUrl/JP2K-33003-2.svs'),
-    approxSizeBytes: 289249689,
+    approxSizeBytes: 289250433,
   ),
   SampleSlide(
     fileName: 'CMU-2.svs',
     title: 'CMU-2',
     description: 'Sample slide, the largest file in the list.',
     url: Uri.parse('$_baseUrl/CMU-2.svs'),
-    approxSizeBytes: 390751846,
+    approxSizeBytes: 390750635,
   ),
 ];

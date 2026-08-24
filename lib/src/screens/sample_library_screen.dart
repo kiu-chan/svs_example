@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/sample_slide.dart';
@@ -16,13 +18,22 @@ class SampleLibraryScreen extends StatefulWidget {
 class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
   final _service = SampleLibraryService();
   final Map<String, bool> _downloaded = {};
-  final Map<String, double> _progress = {};
+  final Map<String, DownloadProgress> _progress = {};
   final Map<String, Object> _errors = {};
+  final Map<String, StreamSubscription<DownloadProgress>> _subscriptions = {};
 
   @override
   void initState() {
     super.initState();
     _refreshStatuses();
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _subscriptions.values) {
+      subscription.cancel();
+    }
+    super.dispose();
   }
 
   Future<void> _refreshStatuses() async {
@@ -33,28 +44,45 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
     }
   }
 
-  Future<void> _download(SampleSlide slide) async {
+  void _download(SampleSlide slide) {
     setState(() {
-      _progress[slide.fileName] = 0;
+      _progress[slide.fileName] = const DownloadProgress(received: 0);
       _errors.remove(slide.fileName);
     });
-    try {
-      await for (final progress in _service.download(slide)) {
+    final subscription = _service.download(slide).listen(
+      (progress) {
         if (!mounted) return;
         setState(() => _progress[slide.fileName] = progress);
-      }
-      if (!mounted) return;
-      setState(() {
-        _progress.remove(slide.fileName);
-        _downloaded[slide.fileName] = true;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _progress.remove(slide.fileName);
-        _errors[slide.fileName] = e;
-      });
-    }
+      },
+      onError: (Object e) {
+        _subscriptions.remove(slide.fileName);
+        if (!mounted) return;
+        setState(() {
+          _progress.remove(slide.fileName);
+          _errors[slide.fileName] = e;
+        });
+      },
+      onDone: () {
+        _subscriptions.remove(slide.fileName);
+        if (!mounted) return;
+        setState(() {
+          _progress.remove(slide.fileName);
+          _downloaded[slide.fileName] = true;
+        });
+      },
+    );
+    _subscriptions[slide.fileName] = subscription;
+  }
+
+  /// Cancels an in-flight download — the underlying [SampleLibraryService]
+  /// aborts the HTTP request and deletes the partial file as soon as the
+  /// subscription is cancelled.
+  Future<void> _cancelDownload(SampleSlide slide) async {
+    final subscription = _subscriptions.remove(slide.fileName);
+    if (subscription == null) return;
+    await subscription.cancel();
+    if (!mounted) return;
+    setState(() => _progress.remove(slide.fileName));
   }
 
   Future<void> _delete(SampleSlide slide) async {
@@ -85,6 +113,7 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
             progress: _progress[slide.fileName],
             error: _errors[slide.fileName],
             onDownload: () => _download(slide),
+            onCancel: () => _cancelDownload(slide),
             onOpen: () => _open(slide),
             onDelete: () => _delete(slide),
           );
@@ -97,9 +126,10 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
 class _SampleSlideCard extends StatelessWidget {
   final SampleSlide slide;
   final bool isDownloaded;
-  final double? progress;
+  final DownloadProgress? progress;
   final Object? error;
   final VoidCallback onDownload;
+  final VoidCallback onCancel;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
 
@@ -109,6 +139,7 @@ class _SampleSlideCard extends StatelessWidget {
     required this.progress,
     required this.error,
     required this.onDownload,
+    required this.onCancel,
     required this.onOpen,
     required this.onDelete,
   });
@@ -116,6 +147,7 @@ class _SampleSlideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final progress = this.progress;
     final downloading = progress != null;
     return Card(
       child: Padding(
@@ -145,9 +177,25 @@ class _SampleSlideCard extends StatelessWidget {
             Text(slide.description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             const SizedBox(height: 12),
             if (downloading) ...[
-              LinearProgressIndicator(value: progress == 0 ? null : progress),
+              LinearProgressIndicator(value: progress.fraction),
               const SizedBox(height: 8),
-              Text('${((progress ?? 0) * 100).toStringAsFixed(0)}%', style: theme.textTheme.bodySmall),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      progress.total != null
+                          ? '${formatBytes(progress.received)} / ${formatBytes(progress.total!)}'
+                          : formatBytes(progress.received),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onCancel,
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Cancel'),
+                  ),
+                ],
+              ),
             ] else if (error != null) ...[
               Text('$error', style: TextStyle(color: theme.colorScheme.error)),
               const SizedBox(height: 8),
