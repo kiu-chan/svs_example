@@ -174,6 +174,8 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
           tileSize: options.tileSize,
           includeLabelAndMacroImages: options.includeLabelAndMacroImages,
           includeSourceMetadata: options.includeSourceMetadata,
+          compression: options.compression,
+          jp2kCompressionRatio: options.jp2kCompressionRatio,
           adjustments: widget.adjustments,
           onProgress: onProgress,
         ),

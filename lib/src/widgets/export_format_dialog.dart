@@ -15,12 +15,16 @@ class SvsExportOptions {
   final int tileSize;
   final bool includeLabelAndMacroImages;
   final bool includeSourceMetadata;
+  final SvsExportCompression compression;
+  final double jp2kCompressionRatio;
 
   const SvsExportOptions({
     required this.quality,
     required this.tileSize,
     required this.includeLabelAndMacroImages,
     required this.includeSourceMetadata,
+    required this.compression,
+    required this.jp2kCompressionRatio,
   });
 }
 
@@ -43,6 +47,8 @@ class _SvsExportOptionsDialogState extends State<_SvsExportOptionsDialog> {
   int _tileSize = 256;
   bool _includeLabelAndMacroImages = true;
   bool _includeSourceMetadata = true;
+  SvsExportCompression _compression = SvsExportCompression.jpeg;
+  double _jp2kCompressionRatio = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +60,65 @@ class _SvsExportOptionsDialogState extends State<_SvsExportOptionsDialog> {
         children: [
           const Text('Re-encodes the crop as a brand new, reopenable pyramidal .svs file.'),
           const SizedBox(height: 16),
-          Text('Tile JPEG quality: ${_quality.round()}', style: Theme.of(context).textTheme.bodySmall),
-          Slider(
-            value: _quality,
-            min: 1,
-            max: 100,
-            divisions: 99,
-            label: '${_quality.round()}',
-            onChanged: (value) => setState(() => _quality = value),
+          DropdownButtonFormField<SvsExportCompression>(
+            initialValue: _compression,
+            decoration: const InputDecoration(labelText: 'Tile compression', isDense: true),
+            items: const [
+              DropdownMenuItem(value: SvsExportCompression.jpeg, child: Text('JPEG')),
+              DropdownMenuItem(value: SvsExportCompression.jpeg2000, child: Text('JPEG2000')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _compression = value);
+            },
           ),
+          const SizedBox(height: 8),
+          if (_compression == SvsExportCompression.jpeg) ...[
+            Text('Tile JPEG quality: ${_quality.round()}', style: Theme.of(context).textTheme.bodySmall),
+            Slider(
+              value: _quality,
+              min: 1,
+              max: 100,
+              divisions: 99,
+              label: '${_quality.round()}',
+              onChanged: (value) => setState(() => _quality = value),
+            ),
+          ] else ...[
+            Text(
+              _jp2kCompressionRatio == 0
+                  ? 'JPEG2000 target ratio: lossless'
+                  : 'JPEG2000 target ratio: ${_jp2kCompressionRatio.round()}:1',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Slider(
+              value: _jp2kCompressionRatio,
+              min: 0,
+              max: 100,
+              divisions: 100,
+              label: _jp2kCompressionRatio == 0 ? 'Lossless' : '${_jp2kCompressionRatio.round()}:1',
+              onChanged: (value) => setState(() => _jp2kCompressionRatio = value),
+            ),
+            if (_jp2kCompressionRatio > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 16, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _jp2kCompressionRatio >= 50
+                          ? 'Lossy: at this ratio, fine detail will be noticeably blurred after decoding.'
+                          : 'Lossy: higher ratios blur fine detail after decoding. Use 0 for pixel-exact output.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _tileSize,
@@ -106,6 +162,8 @@ class _SvsExportOptionsDialogState extends State<_SvsExportOptionsDialog> {
               tileSize: _tileSize,
               includeLabelAndMacroImages: _includeLabelAndMacroImages,
               includeSourceMetadata: _includeSourceMetadata,
+              compression: _compression,
+              jp2kCompressionRatio: _jp2kCompressionRatio,
             ),
           ),
           child: const Text('Export'),

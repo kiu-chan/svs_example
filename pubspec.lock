@@ -340,10 +340,10 @@ packages:
     dependency: transitive
     description:
       name: openjpeg_ffi
-      sha256: b5b18b8eb791a9ff1bc3f62061802d6e126198dd98b79531db3d6a920ed570d8
+      sha256: "3b03dbb617c7ad522f1ff47e00743a4917bd98bc330ccc14c2be0dedd21cb142"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0"
+    version: "0.2.0"
   package_config:
     dependency: transitive
     description:
@@ -496,11 +496,10 @@ packages:
   svs:
     dependency: "direct main"
     description:
-      name: svs
-      sha256: "2b63268fd0def2dea3236c0925baecefbfaac2bc97eeac5c1ff6d08077caa9d1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.3"
+      path: "../svs"
+      relative: true
+    source: path
+    version: "1.1.0"
   term_glyph:
     dependency: transitive
     description:
