@@ -35,7 +35,18 @@ dependencies:
   http: ^1.6.0
   path: ^1.9.1
   path_provider: ^2.1.6
-  svs: ^1.1.0
+  svs:
+    path: ../../packages/svs
+
+# Forces the local (fixed) openjpeg_ffi even though svs's own pubspec still
+# says `^0.3.0` — the published 0.3.0 crashes `flutter build web`
+# (hook/build.dart accesses HookConfig.code without checking
+# buildCodeAssets first, fixed locally but not yet published). Remove this
+# once a fixed openjpeg_ffi is published and svs's constraint is satisfied
+# by it directly.
+dependency_overrides:
+  openjpeg_ffi:
+    path: ../../packages/openjpeg_ffi
 
 dev_dependencies:
   flutter_test:

@@ -92,9 +92,9 @@ class _SampleLibraryScreenState extends State<SampleLibraryScreen> {
   }
 
   Future<void> _open(SampleSlide slide) async {
-    final file = await _service.localFile(slide);
+    final path = await _service.localFilePath(slide);
     if (!mounted) return;
-    Navigator.of(context).pop(file.path);
+    Navigator.of(context).pop(path);
   }
 
   @override

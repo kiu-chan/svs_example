@@ -1,6 +1,9 @@
 // Cross-checks `TileWorkerPool` (background-isolate tile fetching) against
 // real Aperio SVS files — see real_file_integration_test.dart's header for
 // why these skip gracefully when the file isn't present locally.
+@TestOn('vm')
+library;
+
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +21,7 @@ void main() {
   test('fetches JPEG tiles across two levels, matching the direct (main-isolate) read byte-for-byte', () async {
     final svs = await SvsFile.open(jpegSlide);
     addTearDown(svs.close);
-    final pool = await TileWorkerPool.spawn(svs.path);
+    final pool = await TileWorkerPool.spawn(svs.path!);
     addTearDown(pool.dispose);
 
     // One tile from level 0 and one from level 1, requested concurrently —
@@ -41,7 +44,7 @@ void main() {
   test('fetches and decodes a JPEG2000 tile on the worker, matching the direct openjpeg_ffi decode', () async {
     final svs = await SvsFile.open(jp2kSlide);
     addTearDown(svs.close);
-    final pool = await TileWorkerPool.spawn(svs.path);
+    final pool = await TileWorkerPool.spawn(svs.path!);
     addTearDown(pool.dispose);
 
     final result = await pool.requestTile(level: 0, tileX: 0, tileY: 0).result;
@@ -54,7 +57,7 @@ void main() {
   test('a batch of concurrent requests across both workers all resolve correctly', () async {
     final svs = await SvsFile.open(jpegSlide);
     addTearDown(svs.close);
-    final pool = await TileWorkerPool.spawn(svs.path);
+    final pool = await TileWorkerPool.spawn(svs.path!);
     addTearDown(pool.dispose);
 
     final level = svs.levels[1]; // smaller level, faster to fetch a wide batch from
@@ -76,7 +79,7 @@ void main() {
   test('cancel() rejects the pending result immediately instead of letting it hang', () async {
     final svs = await SvsFile.open(jpegSlide);
     addTearDown(svs.close);
-    final pool = await TileWorkerPool.spawn(svs.path);
+    final pool = await TileWorkerPool.spawn(svs.path!);
     addTearDown(pool.dispose);
 
     // Queue several requests behind each other on the same (single-worker)

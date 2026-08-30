@@ -1,11 +1,12 @@
-import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:svs/svs.dart';
 
+import '../utils/dev_sample_dir.dart';
 import '../utils/export_utils.dart';
 import '../widgets/associated_image_card.dart';
 import '../widgets/export_format_dialog.dart';
@@ -34,15 +35,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Object? _error;
 
   Future<void> _pickAndOpen() async {
-    final sampleDir = Directory('sample_data');
     final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['svs', 'tif', 'tiff'],
-      initialDirectory: sampleDir.existsSync() ? sampleDir.absolute.path : null,
+      initialDirectory: devSampleDirPath(),
     );
-    final path = picked?.path;
-    if (path == null) return; // cancelled, or platform only returned bytes
-    await _openPath(path);
+    if (picked == null) return;
+    final path = picked.path;
+    if (path != null) {
+      await _openWith(() => SvsFile.open(path), fileName: p.basename(path));
+      return;
+    }
+    // No local file path (e.g. the web) — read the bytes directly.
+    final bytes = await picked.readAsBytes();
+    await _openWith(() => SvsFile.openBytes(bytes), fileName: picked.name);
   }
 
   Future<void> _browseSamples() async {
@@ -50,20 +56,20 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
     ).push<String>(MaterialPageRoute(builder: (_) => const SampleLibraryScreen()));
     if (path == null) return;
-    await _openPath(path);
+    await _openWith(() => SvsFile.open(path), fileName: p.basename(path));
   }
 
-  Future<void> _openPath(String path) async {
+  Future<void> _openWith(Future<SvsFile> Function() open, {required String fileName}) async {
     setState(() {
       _loading = true;
       _error = null;
-      _fileName = path.split(Platform.pathSeparator).last;
+      _fileName = fileName;
     });
 
     await _disposeCurrent();
 
     try {
-      final svs = await SvsFile.open(path);
+      final svs = await open();
       final previews = <AssociatedImageKind, ui.Image>{};
       for (final associated in svs.associatedImages) {
         if (!associated.isDecodable) continue;
@@ -189,11 +195,15 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.crop),
               tooltip: 'Export region',
             ),
-          IconButton(
-            onPressed: _loading ? null : _browseSamples,
-            icon: const Icon(Icons.cloud_download_outlined),
-            tooltip: 'Sample file library',
-          ),
+          // The sample library downloads files up to several GB, which
+          // would need to fully fit in the browser tab's memory to open via
+          // SvsFile.openBytes — not offered on the web.
+          if (!kIsWeb)
+            IconButton(
+              onPressed: _loading ? null : _browseSamples,
+              icon: const Icon(Icons.cloud_download_outlined),
+              tooltip: 'Sample file library',
+            ),
           IconButton(
             onPressed: _loading ? null : _pickAndOpen,
             icon: const Icon(Icons.folder_open),
@@ -323,18 +333,22 @@ class _EmptyState extends StatelessWidget {
             Text('No file open yet', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Pick a .svs/.tif file on your device, or download a sample file for a quick test.',
+              kIsWeb
+                  ? 'Pick a .svs/.tif file from your device.'
+                  : 'Pick a .svs/.tif file on your device, or download a sample file for a quick test.',
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             FilledButton.icon(onPressed: onPickFile, icon: const Icon(Icons.folder_open), label: const Text('Pick a .svs file')),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onBrowseSamples,
-              icon: const Icon(Icons.cloud_download_outlined),
-              label: const Text('Download a sample file'),
-            ),
+            if (!kIsWeb) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onBrowseSamples,
+                icon: const Icon(Icons.cloud_download_outlined),
+                label: const Text('Download a sample file'),
+              ),
+            ],
           ],
         ),
       ),

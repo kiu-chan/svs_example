@@ -93,7 +93,7 @@ class _FileInfoScreenState extends State<FileInfoScreen> {
           icon: Icons.folder_zip_outlined,
           child: Column(
             children: [
-              InfoRow('Path', info.path),
+              InfoRow('Path', info.path ?? '(opened from bytes)'),
               InfoRow('Format', info.isBigTiff ? 'BigTIFF' : 'Classic TIFF'),
               InfoRow('Byte order', info.byteOrder.toString()),
             ],

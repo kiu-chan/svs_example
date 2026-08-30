@@ -2,6 +2,9 @@
 // behind `SvsImageView`) against a real Aperio SVS file — see
 // real_file_integration_test.dart's header for why these skip gracefully
 // when the file isn't present locally.
+@TestOn('vm')
+library;
+
 import 'dart:async';
 import 'dart:io';
 

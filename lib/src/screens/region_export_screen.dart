@@ -1,11 +1,10 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:svs/svs.dart';
 
+import '../services/svs_pyramid_builder.dart';
 import '../utils/export_utils.dart';
 import '../widgets/export_format_dialog.dart';
 import 'file_info_screen.dart';
@@ -15,7 +14,7 @@ import 'viewer_screen.dart';
 /// image (the pyramid's coarsest level, always small enough to decode in
 /// full), pick which pyramid level to export it at, and save the crop —
 /// built on the `svs` package's [readSvsRegion]/[exportSvsRegion]/
-/// [exportSvsRegionAsSvsToFile]. [adjustments] (from the viewer's brightness/
+/// [buildSvsPyramidExport]. [adjustments] (from the viewer's brightness/
 /// contrast panel, if any) is baked into every exported crop, and previewed
 /// live on the reference image via the same GPU color filter the viewer uses.
 class RegionExportScreen extends StatefulWidget {
@@ -141,9 +140,9 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
 
   /// Re-encodes the selected crop as a brand new, reopenable pyramidal
   /// `.svs` file (rather than a flat raster image) via
-  /// [exportSvsRegionAsSvsToFile], writing it to a temp file first so it can
-  /// be immediately opened/inspected without a round-trip through the
-  /// platform's save-file picker.
+  /// [buildSvsPyramidExport] — streamed to a native temp file, or built
+  /// in-memory on the web, so it can be immediately opened/inspected
+  /// without a round-trip through the platform's save-file picker.
   Future<void> _exportAsSvs() async {
     final selection = _selectionRef;
     if (selection == null) return;
@@ -155,53 +154,31 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
 
     setState(() => _exporting = true);
     try {
-      final tempDir = await getTemporaryDirectory();
-      if (!mounted) return;
-      final tempPath =
-          '${tempDir.path}/${widget.suggestedName}_crop_${DateTime.now().millisecondsSinceEpoch}.svs';
-      final file = await runWithExportProgress(
+      final result = await runWithExportProgress(
         context,
         title: 'Building .svs pyramid…',
-        task: (onProgress) => options.preserveSourceLevels
-            ? exportSvsRegionAsSvsPreservingLevelsToFile(
-                widget.svs,
-                path: tempPath,
-                level: _targetLevel,
-                x: region.x,
-                y: region.y,
-                width: region.width,
-                height: region.height,
-                quality: options.quality,
-                tileSize: options.tileSize,
-                includeLabelAndMacroImages: options.includeLabelAndMacroImages,
-                includeSourceMetadata: options.includeSourceMetadata,
-                compression: options.compression,
-                jp2kCompressionRatio: options.jp2kCompressionRatio,
-                matchSourceCompression: options.matchSourceCompression,
-                adjustments: widget.adjustments,
-                onProgress: onProgress,
-              )
-            : exportSvsRegionAsSvsToFile(
-                widget.svs,
-                path: tempPath,
-                level: _targetLevel,
-                x: region.x,
-                y: region.y,
-                width: region.width,
-                height: region.height,
-                quality: options.quality,
-                tileSize: options.tileSize,
-                includeLabelAndMacroImages: options.includeLabelAndMacroImages,
-                includeSourceMetadata: options.includeSourceMetadata,
-                compression: options.compression,
-                jp2kCompressionRatio: options.jp2kCompressionRatio,
-                matchSourceCompression: options.matchSourceCompression,
-                adjustments: widget.adjustments,
-                onProgress: onProgress,
-              ),
+        task: (onProgress) => buildSvsPyramidExport(
+          widget.svs,
+          preserveSourceLevels: options.preserveSourceLevels,
+          level: _targetLevel,
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          quality: options.quality,
+          tileSize: options.tileSize,
+          includeLabelAndMacroImages: options.includeLabelAndMacroImages,
+          includeSourceMetadata: options.includeSourceMetadata,
+          compression: options.compression,
+          jp2kCompressionRatio: options.jp2kCompressionRatio,
+          matchSourceCompression: options.matchSourceCompression,
+          adjustments: widget.adjustments,
+          tempFileBaseName: widget.suggestedName,
+          onProgress: onProgress,
+        ),
       );
       if (!mounted) return;
-      await _showNewSvsFileSheet(file);
+      await _showNewSvsFileSheet(result);
     } catch (e) {
       if (!mounted) return;
       await showExportError(context, e);
@@ -210,7 +187,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     }
   }
 
-  Future<void> _showNewSvsFileSheet(File file) async {
+  Future<void> _showNewSvsFileSheet(BuiltSvsPyramid result) async {
     await showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) {
@@ -225,17 +202,11 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                   'New .svs file created',
                   style: Theme.of(sheetContext).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  file.path,
-                  style: Theme.of(sheetContext).textTheme.bodySmall,
-                  overflow: TextOverflow.ellipsis,
-                ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: () {
                     Navigator.of(sheetContext).pop();
-                    _openExportedFile(file, viewer: true);
+                    _openExportedFile(result, viewer: true);
                   },
                   icon: const Icon(Icons.zoom_in),
                   label: const Text('Open in viewer'),
@@ -244,7 +215,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                 OutlinedButton.icon(
                   onPressed: () {
                     Navigator.of(sheetContext).pop();
-                    _openExportedFile(file, viewer: false);
+                    _openExportedFile(result, viewer: false);
                   },
                   icon: const Icon(Icons.description_outlined),
                   label: const Text('View file info'),
@@ -253,7 +224,8 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     Navigator.of(sheetContext).pop();
-                    final bytes = await file.readAsBytes();
+                    final bytes = await result.readBytes();
+                    await result.dispose();
                     if (!mounted) return;
                     await saveSvsFileBytes(
                       context,
@@ -272,13 +244,14 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     );
   }
 
-  /// Opens the freshly exported [file] as its own [SvsFile] (independent of
-  /// [widget.svs]) and pushes either [ViewerScreen] or [FileInfoScreen] on
-  /// it, closing it again once that screen is popped.
-  Future<void> _openExportedFile(File file, {required bool viewer}) async {
+  /// Opens the freshly exported pyramid as its own [SvsFile] (independent
+  /// of [widget.svs]) and pushes either [ViewerScreen] or [FileInfoScreen]
+  /// on it, closing it (and releasing [result]) again once that screen is
+  /// popped.
+  Future<void> _openExportedFile(BuiltSvsPyramid result, {required bool viewer}) async {
     final SvsFile opened;
     try {
-      opened = await SvsFile.open(file.path);
+      opened = await result.open();
     } catch (e) {
       if (!mounted) return;
       await showExportError(context, e);
@@ -286,6 +259,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
     }
     if (!mounted) {
       await opened.close();
+      await result.dispose();
       return;
     }
     await Navigator.of(context).push<void>(
@@ -302,6 +276,7 @@ class _RegionExportScreenState extends State<RegionExportScreen> {
       ),
     );
     await opened.close();
+    await result.dispose();
   }
 
   @override

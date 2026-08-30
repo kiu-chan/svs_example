@@ -2,6 +2,9 @@
 // fixtures. These files are large (tens to hundreds of MB) and gitignored —
 // see ../sample_data/ — so every test here skips gracefully when the file
 // isn't present locally rather than failing.
+@TestOn('vm')
+library;
+
 import 'dart:io';
 import 'dart:ui' as ui;
 

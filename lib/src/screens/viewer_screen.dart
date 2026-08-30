@@ -1,9 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:svs/svs.dart';
 
+import '../services/disk_cache_service.dart';
 import 'file_info_screen.dart';
 import 'region_export_screen.dart';
 
@@ -31,19 +29,13 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _openDiskCache();
   }
 
-  // Scoped to this slide's own path, per DiskTileCache's requirement that
-  // different slides not share a directory (their tile keys would collide).
+  // Native only (no filesystem/persistent cache on the web) — see
+  // openDiskCacheFor. A speed optimization only; falls back to
+  // in-memory-only tile caching silently on any failure.
   Future<void> _openDiskCache() async {
-    try {
-      final cacheRoot = await getApplicationCacheDirectory();
-      final dir = Directory('${cacheRoot.path}/svs_tiles/${widget.svs.path.hashCode}');
-      final cache = await DiskTileCache.open(dir);
-      if (!mounted) return;
-      setState(() => _diskCache = cache);
-    } catch (_) {
-      // Persistent cache is a speed optimization only; fall back to
-      // in-memory-only tile caching silently on any failure.
-    }
+    final cache = await openDiskCacheFor(widget.svs);
+    if (!mounted || cache == null) return;
+    setState(() => _diskCache = cache);
   }
 
   void _onAnnotationsChanged() {
